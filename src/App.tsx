@@ -9,6 +9,11 @@ import type {
   InputField,
 } from './lib/types'
 
+const exampleInputs = {
+  footprinterString: '0402',
+  jlcpcbPartNumber: 'C1093',
+}
+
 const sectionLabelClass =
   'text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500'
 const surfaceClass = 'rounded-3xl border border-slate-200 bg-white shadow-panel'
@@ -43,6 +48,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [errorHint, setErrorHint] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<InputField, string>>>({})
+  const [isLoading, setIsLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const comparison = useMemo(() => {
@@ -81,19 +87,24 @@ function App() {
     return null
   }
 
-  const handleCompare = async (event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault()
+  const runComparison = async ({
+    footprinterString: nextFootprinterString,
+    jlcpcbPartNumber: nextJlcpcbPartNumber,
+  }: {
+    footprinterString: string
+    jlcpcbPartNumber: string
+  }) => {
     setErrorMessage(null)
     setErrorHint(null)
     setFieldErrors({})
 
     const nextFieldErrors: Partial<Record<InputField, string>> = {}
 
-    if (!footprinterString.trim()) {
+    if (!nextFootprinterString.trim()) {
       nextFieldErrors.footprinterString = 'Footprinter string is required.'
     }
 
-    const jlcpcbPartNumberError = validateJlcpcbPartNumber(jlcpcbPartNumber)
+    const jlcpcbPartNumberError = validateJlcpcbPartNumber(nextJlcpcbPartNumber)
     if (jlcpcbPartNumberError) {
       nextFieldErrors.jlcpcbPartNumber = jlcpcbPartNumberError
     }
@@ -107,14 +118,15 @@ function App() {
     }
 
     try {
+      setIsLoading(true)
       const response = await fetch('/api/compare', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          footprinterString,
-          jlcpcbPartNumber,
+          footprinterString: nextFootprinterString,
+          jlcpcbPartNumber: nextJlcpcbPartNumber,
         }),
       })
 
@@ -158,8 +170,8 @@ function App() {
       startTransition(() => {
         setCompareResponse(payload)
         setComparedInputs({
-          footprinterString: footprinterString.trim(),
-          jlcpcbPartNumber: jlcpcbPartNumber.trim().toUpperCase(),
+          footprinterString: nextFootprinterString.trim(),
+          jlcpcbPartNumber: nextJlcpcbPartNumber.trim().toUpperCase(),
         })
       })
     } catch (error) {
@@ -179,7 +191,29 @@ function App() {
         setCompareResponse(null)
         setComparedInputs(null)
       })
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  const handleCompare = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    await runComparison({
+      footprinterString,
+      jlcpcbPartNumber,
+    })
+  }
+
+  const handleLoadExample = () => {
+    setFootprinterString(exampleInputs.footprinterString)
+    setJlcpcbPartNumber(exampleInputs.jlcpcbPartNumber)
+    setCompareResponse(null)
+    setComparedInputs(null)
+    setErrorMessage(null)
+    setErrorHint(null)
+    setFieldErrors({})
+
+    void runComparison(exampleInputs)
   }
 
   return (
@@ -344,15 +378,27 @@ function App() {
 
             <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <button
+                className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 disabled:cursor-wait disabled:opacity-70"
+                type="button"
+                disabled={isLoading || isPending}
+                onClick={handleLoadExample}
+              >
+                {isLoading ? 'Loading example…' : 'Load working example'}
+              </button>
+              <button
                 className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
                 type="submit"
-                disabled={isPending}
+                disabled={isLoading || isPending}
               >
-                {isPending ? 'Validating…' : 'Validate and compare'}
+                {isLoading || isPending ? 'Validating…' : 'Validate and compare'}
               </button>
-              <p className="text-sm leading-6 text-slate-500">
-                Analysis stays hidden until both upstream validators succeed.
-              </p>
+              <div className="space-y-2 text-sm leading-6 text-slate-500">
+                <p>Analysis stays hidden until both upstream validators succeed.</p>
+                <p>
+                  Example: <code className="text-slate-700">0402</code> with{' '}
+                  <code className="text-slate-700">C1093</code>
+                </p>
+              </div>
             </div>
           </form>
 

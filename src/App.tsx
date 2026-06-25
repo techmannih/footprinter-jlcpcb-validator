@@ -210,16 +210,14 @@ function App() {
       <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_360px]">
           <article className={`${surfaceClass} p-6 sm:p-7`}>
-            <div className={sectionLabelClass}>Strict Validation Flow</div>
+            <div className={sectionLabelClass}>Exact Validation</div>
             <h1 className="mt-3 max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-              Validate with footprinter and EasyEDA first, then compare the
-              footprints.
+              Compare exact Footprinter and JLCPCB footprints.
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-              The left input is accepted only if `@tscircuit/footprinter` can build
-              it directly. The right input is accepted only if EasyEDA resolves the
-              exact same JLCPCB part number. Analysis is shown only after both
-              validations succeed.
+              Analysis is shown only after `@tscircuit/footprinter` accepts the
+              left input and EasyEDA resolves the exact same JLCPCB part number on
+              the right.
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-sm">
               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">
@@ -501,7 +499,7 @@ function App() {
                 </article>
               </section>
 
-              <section className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
+              <section className="mt-6 space-y-4">
                 <article className={`${secondarySurfaceClass} p-5`}>
                   <header className="border-b border-slate-200 pb-4">
                     <div className={sectionLabelClass}>Overlay Preview</div>
@@ -534,7 +532,7 @@ function App() {
                   </div>
                 </article>
 
-                <article className={`${secondarySurfaceClass} p-5`}>
+                <article className={`${secondarySurfaceClass} p-5 xl:max-w-3xl`}>
                   <header className="border-b border-slate-200 pb-4">
                     <div className={sectionLabelClass}>IoU Difference</div>
                     <h2 className="mt-1 text-xl font-semibold text-slate-950">

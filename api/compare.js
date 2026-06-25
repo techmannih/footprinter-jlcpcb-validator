@@ -2,16 +2,16 @@ import {
   createInvalidJsonResponse,
   createMethodNotAllowedResponse,
   handleCompareRequest,
-} from '../server/compareApi.js'
+} from '../dist-server/compareApi.js'
 
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
 }
 
 const createJsonResponse = (
-  body: unknown,
-  status: number,
-  extraHeaders: Record<string, string> = {},
+  body,
+  status,
+  extraHeaders = {},
 ) =>
   new Response(JSON.stringify(body), {
     headers: {
@@ -22,7 +22,7 @@ const createJsonResponse = (
   })
 
 export default {
-  async fetch(request: Request) {
+  async fetch(request) {
     if (request.method !== 'POST') {
       const result = createMethodNotAllowedResponse()
       return createJsonResponse(result.body, result.status, {
@@ -30,7 +30,7 @@ export default {
       })
     }
 
-    let requestBody: unknown
+    let requestBody
 
     try {
       requestBody = await request.json()

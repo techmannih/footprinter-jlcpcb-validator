@@ -119,13 +119,22 @@ function App() {
       })
 
       const responseText = await response.text()
+      const responseContentType = response.headers.get('content-type') ?? ''
       let payload: CompareResponse | ApiErrorResponse | null = null
 
       if (responseText) {
         try {
           payload = JSON.parse(responseText) as CompareResponse | ApiErrorResponse
         } catch {
-          throw new Error('The comparison server returned an unreadable response.')
+          const normalizedText = responseText.replace(/\s+/g, ' ').trim()
+          const responsePreview = normalizedText.slice(0, 120)
+          const contentTypeLabel = responseContentType || 'unknown content type'
+          const statusLabel = [response.status, response.statusText].filter(Boolean).join(' ')
+          const previewSuffix = responsePreview ? ` Response preview: ${responsePreview}` : ''
+
+          throw new Error(
+            `The comparison server returned ${contentTypeLabel} instead of JSON (${statusLabel}).${previewSuffix}`,
+          )
         }
       }
 

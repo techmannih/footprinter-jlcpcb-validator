@@ -532,7 +532,7 @@ function App() {
                   </div>
                 </article>
 
-                <article className={`${secondarySurfaceClass} p-5 xl:max-w-3xl`}>
+                <article className={`${secondarySurfaceClass} p-5`}>
                   <header className="border-b border-slate-200 pb-4">
                     <div className={sectionLabelClass}>IoU Difference</div>
                     <h2 className="mt-1 text-xl font-semibold text-slate-950">

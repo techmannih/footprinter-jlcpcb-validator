@@ -22,22 +22,66 @@ export function DiffHeatmap({ comparison }: DiffHeatmapProps) {
     const context = canvas.getContext('2d')
     if (!context) return
 
-    const { gridSize, occupancy } = comparison
-    canvas.width = gridSize
-    canvas.height = gridSize
+    const renderHeatmap = () => {
+      const rect = canvas.getBoundingClientRect()
+      const displayWidth = Math.max(1, Math.round(rect.width))
+      const displayHeight = Math.max(1, Math.round(rect.height))
+      const devicePixelRatio = window.devicePixelRatio || 1
+      const renderWidth = Math.round(displayWidth * devicePixelRatio)
+      const renderHeight = Math.round(displayHeight * devicePixelRatio)
 
-    const image = context.createImageData(gridSize, gridSize)
+      if (canvas.width !== renderWidth || canvas.height !== renderHeight) {
+        canvas.width = renderWidth
+        canvas.height = renderHeight
+      }
 
-    for (let index = 0; index < occupancy.length; index += 1) {
-      const pixelOffset = index * 4
-      const [red, green, blue, alpha] = COLOR_MAP[occupancy[index]] ?? COLOR_MAP[0]
-      image.data[pixelOffset] = red
-      image.data[pixelOffset + 1] = green
-      image.data[pixelOffset + 2] = blue
-      image.data[pixelOffset + 3] = alpha
+      const { gridSize, occupancy } = comparison
+      const imageCanvas = document.createElement('canvas')
+      imageCanvas.width = gridSize
+      imageCanvas.height = gridSize
+
+      const imageContext = imageCanvas.getContext('2d')
+      if (!imageContext) return
+
+      const image = imageContext.createImageData(gridSize, gridSize)
+
+      for (let index = 0; index < occupancy.length; index += 1) {
+        const pixelOffset = index * 4
+        const [red, green, blue, alpha] = COLOR_MAP[occupancy[index]] ?? COLOR_MAP[0]
+        image.data[pixelOffset] = red
+        image.data[pixelOffset + 1] = green
+        image.data[pixelOffset + 2] = blue
+        image.data[pixelOffset + 3] = alpha
+      }
+
+      imageContext.putImageData(image, 0, 0)
+
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.clearRect(0, 0, renderWidth, renderHeight)
+      context.scale(devicePixelRatio, devicePixelRatio)
+      context.fillStyle = '#020617'
+      context.fillRect(0, 0, displayWidth, displayHeight)
+      context.imageSmoothingEnabled = false
+
+      const inset = 20
+      const plotSize = Math.max(1, Math.min(displayWidth, displayHeight) - inset * 2)
+      const plotX = (displayWidth - plotSize) / 2
+      const plotY = (displayHeight - plotSize) / 2
+
+      context.drawImage(imageCanvas, plotX, plotY, plotSize, plotSize)
     }
 
-    context.putImageData(image, 0, 0)
+    renderHeatmap()
+
+    const resizeObserver = new ResizeObserver(() => {
+      renderHeatmap()
+    })
+
+    resizeObserver.observe(canvas)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [comparison])
 
   return (
@@ -66,7 +110,7 @@ export function DiffHeatmap({ comparison }: DiffHeatmapProps) {
         </span>
       </div>
       <canvas
-        className="aspect-square w-full rounded-2xl border border-slate-800 bg-slate-950 [image-rendering:pixelated]"
+        className="h-[340px] w-full rounded-2xl border border-slate-800 bg-slate-950 shadow-inner [image-rendering:pixelated]"
         ref={canvasRef}
       ></canvas>
     </div>

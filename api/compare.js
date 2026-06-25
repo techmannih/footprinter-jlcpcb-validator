@@ -1,9 +1,3 @@
-import { fp } from '@tscircuit/footprinter'
-import {
-  EasyEdaJsonSchema,
-  convertEasyEdaJsonToCircuitJson,
-  fetchEasyEDAComponent,
-} from 'easyeda'
 import { z } from 'zod'
 
 const directJlcPartNumberPattern = /^C(\d+)$/i
@@ -22,6 +16,9 @@ const compareRequestSchema = z.object({
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
 }
+
+let footprinterModulePromise
+let easyedaModulePromise
 
 class PreviewBuildError extends Error {
   constructor({
@@ -63,6 +60,38 @@ const createJsonResponse = (
 
 const getErrorMessage = (error) =>
   error instanceof Error ? error.message : 'Unexpected error'
+
+const loadFootprinterModule = async () => {
+  try {
+    footprinterModulePromise ??= import('@tscircuit/footprinter')
+    return await footprinterModulePromise
+  } catch (error) {
+    footprinterModulePromise = undefined
+    throw new PreviewBuildError({
+      code: 'FOOTPRINTER_RUNTIME_UNAVAILABLE',
+      field: 'footprinterString',
+      hint: 'The server could not load the footprinter runtime.',
+      message: `The server could not load @tscircuit/footprinter. ${getErrorMessage(error)}`,
+      status: 500,
+    })
+  }
+}
+
+const loadEasyedaModule = async () => {
+  try {
+    easyedaModulePromise ??= import('easyeda/browser')
+    return await easyedaModulePromise
+  } catch (error) {
+    easyedaModulePromise = undefined
+    throw new PreviewBuildError({
+      code: 'JLCPCB_RUNTIME_UNAVAILABLE',
+      field: 'jlcpcbPartNumber',
+      hint: 'The server could not load the EasyEDA runtime.',
+      message: `The server could not load the EasyEDA runtime. ${getErrorMessage(error)}`,
+      status: 500,
+    })
+  }
+}
 
 const normalizePortHint = (hint) => {
   const trimmed = hint.trim()
@@ -196,7 +225,7 @@ const extractPads = (circuitJson) =>
     return []
   })
 
-const buildFootprinterPreview = (footprinterString) => {
+const buildFootprinterPreview = async (footprinterString) => {
   const normalizedString = footprinterString.trim()
   if (!normalizedString) {
     throw new PreviewBuildError({
@@ -210,8 +239,10 @@ const buildFootprinterPreview = (footprinterString) => {
   let circuitJson
 
   try {
+    const { fp } = await loadFootprinterModule()
     circuitJson = fp.string(normalizedString).circuitJson()
   } catch (error) {
+    if (error instanceof PreviewBuildError) throw error
     throw createFootprinterBuildError(normalizedString, error)
   }
 
@@ -235,6 +266,11 @@ const buildFootprinterPreview = (footprinterString) => {
 
 const buildJlcpcbPreview = async (jlcpcbPartNumber) => {
   const normalizedPartNumber = normalizeJlcpcbPartNumber(jlcpcbPartNumber)
+  const {
+    EasyEdaJsonSchema,
+    convertEasyEdaJsonToCircuitJson,
+    fetchEasyEDAComponent,
+  } = await loadEasyedaModule()
 
   let rawComponent
 
@@ -413,7 +449,7 @@ const handleCompareRequest = async (requestBody) => {
 
   try {
     const [left, right] = await Promise.all([
-      Promise.resolve(buildFootprinterPreview(parsed.data.footprinterString)),
+      buildFootprinterPreview(parsed.data.footprinterString),
       buildJlcpcbPreview(parsed.data.jlcpcbPartNumber),
     ])
 
